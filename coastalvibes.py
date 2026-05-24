@@ -61,8 +61,9 @@ def generate_base_terrain():
 # ============================================
 def add_rivers(terrain, strength=0.08):
     river_mask = np.zeros_like(terrain)
-    for y in range(HEIGHT):
-        for x in range(WIDTH):
+    h, w = terrain.shape
+    for y in range(h):
+        for x in range(w):
             r = perlin(x, y, 60.0, 3)
             river_mask[y, x] = r
 
@@ -111,10 +112,11 @@ def biome_color(h, y_norm):
 
 
 def build_color_map(terrain):
-    color_map = np.zeros((HEIGHT, WIDTH, 3))
-    for y in range(HEIGHT):
-        y_norm = y / (HEIGHT - 1)
-        for x in range(WIDTH):
+    h, w = terrain.shape
+    color_map = np.zeros((h, w, 3))
+    for y in range(h):
+        y_norm = y / (h - 1)
+        for x in range(w):
             color_map[y, x] = biome_color(terrain[y, x], y_norm)
     return color_map
 
@@ -141,7 +143,8 @@ def apply_lighting_and_fog(terrain, color_map, light_dir=np.array([1, 1, 2]), fo
     dot = np.clip(dot, 0.1, 1.0)
     shaded = color_map * dot[..., None]
 
-    yy, xx = np.mgrid[0:1:HEIGHT*1j, 0:1:WIDTH*1j]
+    h, w = terrain.shape
+    yy, xx = np.mgrid[0:1:h*1j, 0:1:w*1j]
     dist = np.sqrt((xx - 0.5) ** 2 + (yy - 0.5) ** 2)
     fog = np.clip(dist * fog_strength, 0, 1)
     fog_color = np.array([0.8, 0.85, 0.9])
@@ -194,22 +197,26 @@ def show_image(img, title, cmap=None):
 
 
 def show_3d_surface(terrain, facecolors=None, title="3D View", wireframe=False, points=False):
-    x = np.linspace(0, 1, WIDTH)
-    y = np.linspace(0, 1, HEIGHT)
+    h, w = terrain.shape
+    x = np.linspace(0, 1, w)
+    y = np.linspace(0, 1, h)
     X, Y = np.meshgrid(x, y)
 
     fig = plt.figure(figsize=(10, 7))
     ax = fig.add_subplot(111, projection="3d")
 
     if points:
-        ax.scatter(X.flatten(), Y.flatten(), terrain.flatten(), c=terrain.flatten(), cmap="terrain", s=1)
+        ax.scatter(X.flatten(), Y.flatten(), terrain.flatten(),
+                   c=terrain.flatten(), cmap="terrain", s=1)
     elif wireframe:
         ax.plot_wireframe(X, Y, terrain, color="black", linewidth=0.3)
     else:
         if facecolors is not None:
-            ax.plot_surface(X, Y, terrain, facecolors=facecolors, linewidth=0, antialiased=True, shade=False)
+            ax.plot_surface(X, Y, terrain, facecolors=facecolors,
+                            linewidth=0, antialiased=True, shade=False)
         else:
-            ax.plot_surface(X, Y, terrain, cmap="terrain", linewidth=0, antialiased=True, shade=True)
+            ax.plot_surface(X, Y, terrain, cmap="terrain",
+                            linewidth=0, antialiased=True, shade=True)
 
     ax.set_title(title)
     ax.set_xlabel("X")
@@ -225,8 +232,9 @@ def show_3d_surface(terrain, facecolors=None, title="3D View", wireframe=False, 
 # CAMERA ANIMATION BASE
 # ============================================
 def camera_animation(terrain, facecolors, path_func, title="Flythrough"):
-    x = np.linspace(0, 1, WIDTH)
-    y = np.linspace(0, 1, HEIGHT)
+    h, w = terrain.shape
+    x = np.linspace(0, 1, w)
+    y = np.linspace(0, 1, h)
     X, Y = np.meshgrid(x, y)
 
     fig = plt.figure(figsize=(10, 7))
@@ -291,11 +299,13 @@ def mode_aspect_map(terrain, *_):
 
 # 4 Contour map
 def mode_contour_map(terrain, *_):
+    h, w = terrain.shape
+    x = np.linspace(0, 1, w)
+    y = np.linspace(0, 1, h)
+    X, Y = np.meshgrid(x, y)
+
     plt.figure(figsize=(7, 7))
     plt.title("Contour Map")
-    x = np.linspace(0, 1, WIDTH)
-    y = np.linspace(0, 1, HEIGHT)
-    X, Y = np.meshgrid(x, y)
     cs = plt.contour(X, Y, terrain, levels=20, cmap="terrain")
     plt.clabel(cs, inline=True, fontsize=8)
     plt.axis("off")
@@ -320,7 +330,8 @@ def mode_biome_raw(terrain, *_):
 # 7 Biome map with fog only
 def mode_biome_fog_only(terrain, *_):
     color_map = build_color_map(terrain)
-    yy, xx = np.mgrid[0:1:HEIGHT*1j, 0:1:WIDTH*1j]
+    h, w = terrain.shape
+    yy, xx = np.mgrid[0:1:h*1j, 0:1:w*1j]
     dist = np.sqrt((xx - 0.5) ** 2 + (yy - 0.5) ** 2)
     fog = np.clip(dist * 1.5, 0, 1)
     fog_color = np.array([0.8, 0.85, 0.9])
@@ -371,7 +382,8 @@ def mode_season_variations(terrain, *_):
 def mode_night_mode(terrain, *_):
     color_map = build_color_map(terrain)
     night = color_map * np.array([0.1, 0.2, 0.4])
-    stars = np.random.rand(HEIGHT, WIDTH) > 0.995
+    h, w = terrain.shape
+    stars = np.random.rand(h, w) > 0.995
     night[stars] = [1.0, 1.0, 1.0]
     show_image(night, "Night Mode Terrain")
 
@@ -391,8 +403,9 @@ def mode_erosion_heatmap(base, eroded, *_):
 # 13 Water flow simulation (simple downhill arrows)
 def mode_water_flow(terrain, *_):
     gy, gx = np.gradient(terrain)
-    x = np.linspace(0, 1, WIDTH)
-    y = np.linspace(0, 1, HEIGHT)
+    h, w = terrain.shape
+    x = np.linspace(0, 1, w)
+    y = np.linspace(0, 1, h)
     X, Y = np.meshgrid(x, y)
 
     plt.figure(figsize=(7, 7))
@@ -432,7 +445,7 @@ def mode_point_cloud_terrain(terrain, *_):
     show_3d_surface(terrain, None, "Point Cloud Terrain", points=True)
 
 
-# 17 Shaded terrain with shadows (lighting + darker backfaces)
+# 17 Shaded terrain with shadows
 def mode_shadows_mode(terrain, *_):
     color_map = build_color_map(terrain)
     nx, ny, nz = compute_normals(terrain)
@@ -551,7 +564,8 @@ def mode_watercolor(terrain, *_):
 # 30 Neon cyberpunk terrain
 def mode_cyberpunk(terrain, *_):
     base = (terrain - terrain.min()) / (terrain.max() - terrain.min())
-    neon = np.zeros((HEIGHT, WIDTH, 3))
+    h, w = terrain.shape
+    neon = np.zeros((h, w, 3))
     neon[..., 0] = base
     neon[..., 1] = base ** 0.5
     neon[..., 2] = 1 - base
@@ -625,4 +639,5 @@ def run_demo():
 
 if __name__ == "__main__":
     run_demo()
+
 
